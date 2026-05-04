@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 
 function AttritionPredictor() {
   const [loading, setLoading] = useState(false);
@@ -54,7 +54,7 @@ function AttritionPredictor() {
     setResult(null);
 
     try {
-      const response = await axios.post('/api/predict/attrition', formData);
+      const response = await api.post('/api/predict/attrition', formData);
       setResult(response.data);
     } catch (err) {
       setError(err.response?.data?.detail || 'Erreur lors de la prédiction');

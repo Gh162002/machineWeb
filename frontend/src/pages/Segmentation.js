@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 
 function Segmentation() {
   const [loading, setLoading] = useState(false);
@@ -34,7 +34,7 @@ function Segmentation() {
     setResult(null);
 
     try {
-      const response = await axios.post('/api/predict/segmentation', formData);
+      const response = await api.post('/api/predict/segmentation', formData);
       setResult(response.data);
     } catch (err) {
       setError(err.response?.data?.detail || 'Erreur lors de la segmentation');
