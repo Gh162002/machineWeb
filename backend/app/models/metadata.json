@@ -1,0 +1,69 @@
+{
+  "attrition": {
+    "features": [
+      "Age",
+      "BusinessTravel",
+      "DailyRate",
+      "Department",
+      "DistanceFromHome",
+      "Education",
+      "EducationField",
+      "EmployeeNumber",
+      "EnvironmentSatisfaction",
+      "Gender",
+      "HourlyRate",
+      "JobInvolvement",
+      "JobLevel",
+      "JobRole",
+      "JobSatisfaction",
+      "MaritalStatus",
+      "MonthlyIncome",
+      "MonthlyRate",
+      "NumCompaniesWorked",
+      "OverTime",
+      "PercentSalaryHike",
+      "PerformanceRating",
+      "RelationshipSatisfaction",
+      "StockOptionLevel",
+      "TotalWorkingYears",
+      "TrainingTimesLastYear",
+      "WorkLifeBalance",
+      "YearsAtCompany",
+      "YearsInCurrentRole",
+      "YearsSinceLastPromotion",
+      "YearsWithCurrManager"
+    ],
+    "model_type": "RandomForestClassifier",
+    "description": "Pr\u00e9diction du risque d'attrition des employ\u00e9s"
+  },
+  "segmentation": {
+    "features": [
+      "Age",
+      "MonthlyIncome",
+      "YearsAtCompany",
+      "YearsInCurrentRole",
+      "YearsSinceLastPromotion",
+      "YearsWithCurrManager",
+      "TotalWorkingYears",
+      "JobSatisfaction",
+      "WorkLifeBalance",
+      "EnvironmentSatisfaction"
+    ],
+    "n_clusters": 4,
+    "model_type": "KMeans",
+    "description": "Segmentation des employ\u00e9s en groupes homog\u00e8nes"
+  },
+  "recommendation": {
+    "features": [
+      "Age",
+      "JobLevel",
+      "TotalWorkingYears",
+      "YearsAtCompany",
+      "JobSatisfaction",
+      "PerformanceRating",
+      "TrainingTimesLastYear"
+    ],
+    "model_type": "LinearRegression",
+    "description": "Recommandation bas\u00e9e sur la pr\u00e9diction de performance"
+  }
+}
