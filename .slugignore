@@ -1,0 +1,17 @@
+*.md
+.git
+.gitignore
+.vscode
+*.ipynb
+*.bat
+*.sh
+frontend/node_modules
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+__pycache__
+*.pyc
+.pytest_cache
+.coverage
+htmlcov
