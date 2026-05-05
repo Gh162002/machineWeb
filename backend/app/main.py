@@ -2,12 +2,13 @@
 API FastAPI pour les modèles ML RH
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import pickle
 import numpy as np
+import pandas as pd
 import json
 from pathlib import Path
 
@@ -28,24 +29,38 @@ app.add_middleware(
 
 # Charger les modèles au démarrage
 MODELS_PATH = Path(__file__).parent / "models"
+DATA_PATH = Path(__file__).parent.parent.parent / "WA_Fn-UseC_-HR-Employee-Attrition-1.csv"
+
+# Données globales
+df_global = None
+attrition_model_data = None
+segmentation_model_data = None
+recommendation_model_data = None
+metadata = {}
 
 try:
     with open(MODELS_PATH / "attrition_model.pkl", "rb") as f:
         attrition_model_data = pickle.load(f)
-    
+
     with open(MODELS_PATH / "segmentation_model.pkl", "rb") as f:
         segmentation_model_data = pickle.load(f)
-    
+
     with open(MODELS_PATH / "recommendation_model.pkl", "rb") as f:
         recommendation_model_data = pickle.load(f)
-    
+
     with open(MODELS_PATH / "metadata.json", "r") as f:
         metadata = json.load(f)
-    
+
+    # Charger le CSV pour les vues base de données
+    if DATA_PATH.exists():
+        df_global = pd.read_csv(DATA_PATH)
+        print(f"✅ Dataset chargé : {len(df_global)} employés")
+    else:
+        print("⚠️ CSV non trouvé, les endpoints /database ne seront pas disponibles")
+
     print("✅ Tous les modèles chargés avec succès")
 except Exception as e:
-    print(f"⚠️ Erreur lors du chargement des modèles : {e}")
-    print("⚠️ Veuillez exécuter train_models.py d'abord")
+    print(f"⚠️ Erreur lors du chargement : {e}")
 
 # ============================================
 # MODÈLES PYDANTIC
@@ -328,6 +343,210 @@ def predict_recommendation(data: RecommendationInput):
 def get_metadata():
     """Retourner les métadonnées des modèles"""
     return metadata
+
+
+# ============================================
+# ENDPOINTS BASE DE DONNÉES
+# ============================================
+
+def _check_dataset():
+    if df_global is None:
+        raise HTTPException(status_code=503, detail="Dataset non disponible sur ce serveur.")
+
+
+@app.get("/api/database/employees")
+def get_all_employees(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=5, le=100),
+    department: Optional[str] = Query(None),
+    attrition: Optional[str] = Query(None)
+):
+    """
+    Visualiser la base de données des employés avec pagination et filtres.
+    """
+    _check_dataset()
+    df = df_global.copy()
+
+    if department:
+        df = df[df["Department"] == department]
+    if attrition:
+        df = df[df["Attrition"] == attrition]
+
+    total = len(df)
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_df = df.iloc[start:end]
+
+    columns = ["EmployeeNumber", "Age", "Gender", "Department", "JobRole",
+               "JobLevel", "MonthlyIncome", "YearsAtCompany", "Attrition",
+               "JobSatisfaction", "WorkLifeBalance", "OverTime"]
+
+    records = page_df[columns].fillna("").to_dict(orient="records")
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size,
+        "employees": records
+    }
+
+
+@app.get("/api/database/top-attrition")
+def get_top_attrition(top_n: int = Query(10, ge=1, le=50)):
+    """
+    DSO1 — Top N employés avec le risque d'attrition le plus élevé.
+    Calcule la probabilité d'attrition sur tout le dataset et retourne les plus à risque.
+    """
+    _check_dataset()
+    try:
+        df = df_global.copy()
+        df_enc = df.copy()
+
+        label_encoders = attrition_model_data["label_encoders"]
+        for col, encoder in label_encoders.items():
+            if col in df_enc.columns and col != "Attrition":
+                try:
+                    df_enc[col] = encoder.transform(df_enc[col].astype(str))
+                except Exception:
+                    df_enc[col] = 0
+
+        feature_names = attrition_model_data["feature_names"]
+        # Garder uniquement les colonnes disponibles
+        available = [f for f in feature_names if f in df_enc.columns]
+        X = df_enc[available].fillna(0).values
+
+        model = attrition_model_data["model"]
+        probs = model.predict_proba(X)[:, 1]
+
+        df["attrition_probability"] = probs
+        df["risk_level"] = df["attrition_probability"].apply(
+            lambda p: "Élevé" if p > 0.7 else "Moyen" if p > 0.4 else "Faible"
+        )
+
+        top_df = df.nlargest(top_n, "attrition_probability")
+
+        columns = ["EmployeeNumber", "Age", "Gender", "Department", "JobRole",
+                   "MonthlyIncome", "YearsAtCompany", "OverTime",
+                   "JobSatisfaction", "WorkLifeBalance", "attrition_probability", "risk_level"]
+
+        records = top_df[columns].fillna("").to_dict(orient="records")
+        for r in records:
+            r["attrition_probability"] = round(float(r["attrition_probability"]) * 100, 1)
+
+        return {"top_n": top_n, "employees": records}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@app.get("/api/database/cluster-employees")
+def get_cluster_employees(cluster: int = Query(..., ge=0, le=3)):
+    """
+    DSO2 — Liste des employés affectés à un cluster donné (0, 1, 2 ou 3).
+    """
+    _check_dataset()
+    try:
+        df = df_global.copy()
+        feature_names = segmentation_model_data["feature_names"]
+        X = df[feature_names].fillna(0).values
+
+        scaler = segmentation_model_data["scaler"]
+        pca    = segmentation_model_data["pca"]
+        kmeans = segmentation_model_data["kmeans"]
+
+        X_scaled = scaler.transform(X)
+        X_pca    = pca.transform(X_scaled)
+        clusters = kmeans.predict(X_pca)
+
+        df["cluster"] = clusters
+        cluster_df = df[df["cluster"] == cluster]
+
+        cluster_labels = {
+            0: "Employés juniors en développement",
+            1: "Employés expérimentés et satisfaits",
+            2: "Employés à risque de départ",
+            3: "Cadres seniors et stables"
+        }
+
+        columns = ["EmployeeNumber", "Age", "Gender", "Department", "JobRole",
+                   "MonthlyIncome", "YearsAtCompany", "JobSatisfaction",
+                   "WorkLifeBalance", "EnvironmentSatisfaction", "Attrition"]
+
+        records = cluster_df[columns].fillna("").to_dict(orient="records")
+
+        return {
+            "cluster": cluster,
+            "label": cluster_labels.get(cluster, "Inconnu"),
+            "total": len(records),
+            "employees": records
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@app.get("/api/database/top-recommended")
+def get_top_recommended(
+    top_n: int = Query(5, ge=1, le=20),
+    job_role: Optional[str] = Query(None, description="Filtrer par rôle/activité")
+):
+    """
+    DSO3 — Top N employés les plus recommandés pour une activité donnée.
+    Calcule le score de recommandation sur tout le dataset.
+    """
+    _check_dataset()
+    try:
+        df = df_global.copy()
+
+        if job_role:
+            df = df[df["JobRole"].str.lower() == job_role.lower()]
+            if df.empty:
+                raise HTTPException(status_code=404, detail=f"Aucun employé trouvé pour le rôle '{job_role}'")
+
+        feature_names = recommendation_model_data["feature_names"]
+        X = df[feature_names].fillna(0).values
+
+        scaler = recommendation_model_data["scaler"]
+        model  = recommendation_model_data["model"]
+
+        X_scaled = scaler.transform(X)
+        predicted_incomes = model.predict(X_scaled)
+
+        scores = np.clip((predicted_incomes - 1000) / 190, 0, 100)
+
+        df["recommendation_score"] = scores
+        df["predicted_income"]     = predicted_incomes
+        df["recommendation_level"] = df["recommendation_score"].apply(
+            lambda s: "Excellent" if s >= 80 else "Bon" if s >= 60 else "Moyen" if s >= 40 else "Faible"
+        )
+
+        top_df = df.nlargest(top_n, "recommendation_score")
+
+        columns = ["EmployeeNumber", "Age", "Gender", "Department", "JobRole",
+                   "JobLevel", "TotalWorkingYears", "YearsAtCompany",
+                   "JobSatisfaction", "PerformanceRating", "TrainingTimesLastYear",
+                   "MonthlyIncome", "recommendation_score", "predicted_income", "recommendation_level"]
+
+        records = top_df[columns].fillna("").to_dict(orient="records")
+        for r in records:
+            r["recommendation_score"] = round(float(r["recommendation_score"]), 1)
+            r["predicted_income"]     = round(float(r["predicted_income"]), 0)
+
+        job_roles = sorted(df_global["JobRole"].unique().tolist())
+
+        return {
+            "top_n": top_n,
+            "job_role_filter": job_role,
+            "available_roles": job_roles,
+            "employees": records
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn
