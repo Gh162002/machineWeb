@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { parseApiError } from '../utils';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faAward, faTrophy, faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { faAward, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 
 function Recommendation() {
   const [loading, setLoading]         = useState(false);
@@ -84,7 +84,7 @@ function Recommendation() {
       {/* Section Top 5 */}
       <div className="card" style={{ marginBottom: '24px' }}>
         <h3 style={{ marginBottom: '16px', color: 'var(--color-heading)' }}>
-          <FontAwesomeIcon icon={faTrophy} style={{ marginRight: '8px', color: '#F5A623' }} aria-hidden="true" />
+          <FontAwesomeIcon icon={faAward} style={{ marginRight: '8px', color: '#F5A623' }} aria-hidden="true" />
           Top 5 Employés Recommandés
         </h3>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>

@@ -1,15 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faChartBar, faBullseye, faStar, faArrowRight,
+  faBullseye, faArrowRight,
   faUsers, faArrowTrendUp, faGauge, faCircleNodes,
   faTriangleExclamation, faObjectGroup, faAward,
-  faCircleCheck, faCode, faServer, faDatabase, faCloud,
-  faWandMagicSparkles, faShieldHalved, faLightbulb,
+  faServer, faCode,
   faChartLine, faBrain,
 } from '@fortawesome/free-solid-svg-icons';
-import AppLogo from '../components/AppLogo';
 import './Home.css';
 
 /* ── Animated counter hook ── */
@@ -224,7 +222,6 @@ function KpiCard({ kpi, inView }) {
 
 /* ── Main Home component ── */
 export default function Home() {
-  const [heroRef, heroInView] = useInView(0.1);
   const [cardsRef, cardsInView] = useInView(0.1);
   const [statsRef, statsInView] = useInView(0.1);
   const [tableRef, tableInView] = useInView(0.1);
@@ -235,7 +232,7 @@ export default function Home() {
     <div className="home">
 
       {/* ── HERO ── */}
-      <section className="hero" ref={heroRef} aria-labelledby="hero-heading">
+      <section className="hero" aria-labelledby="hero-heading">
         <div className="hero-grid-bg" aria-hidden="true" />
         <div className="hero-glow" aria-hidden="true" />
 

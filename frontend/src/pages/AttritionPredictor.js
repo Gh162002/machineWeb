@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import api from '../api';
 import { parseApiError } from '../utils';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChartBar, faFire, faTriangleExclamation, faArrowTrendUp } from '@fortawesome/free-solid-svg-icons';
+import { faChartBar, faFire, faArrowTrendUp } from '@fortawesome/free-solid-svg-icons';
 
 function AttritionPredictor() {
   const [loading, setLoading] = useState(false);
