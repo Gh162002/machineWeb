@@ -1,31 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { parseApiError } from '../utils';
 
-const CLUSTER_INFO = {
-  0: { color: '#3b82f6', icon: '🌱', title: 'Employés juniors en développement',
-       characteristics: ["Jeunes employés avec peu d'expérience", "En phase d'apprentissage", "Potentiel de croissance élevé", "Nécessitent un accompagnement"] },
-  1: { color: '#10b981', icon: '⭐', title: 'Employés expérimentés et satisfaits',
-       characteristics: ["Expérience significative", "Haut niveau de satisfaction", "Stabilité dans l'entreprise", "Contributeurs clés"] },
-  2: { color: '#ef4444', icon: '⚠️', title: 'Employés à risque de départ',
-       characteristics: ["Signes d'insatisfaction", "Faible engagement", "Risque d'attrition élevé", "Nécessitent une attention particulière"] },
-  3: { color: '#8b5cf6', icon: '👔', title: 'Cadres seniors et stables',
-       characteristics: ["Longue ancienneté", "Postes de direction", "Très stables", "Mentors potentiels"] }
-};
+// Palette de couleurs et icônes pour les clusters dynamiques DBSCAN
+const CLUSTER_PALETTE = [
+  { color: '#3b82f6', icon: '🌱' },
+  { color: '#10b981', icon: '⭐' },
+  { color: '#ef4444', icon: '⚠️' },
+  { color: '#8b5cf6', icon: '👔' },
+  { color: '#f59e0b', icon: '🔶' },
+  { color: '#06b6d4', icon: '💎' },
+  { color: '#ec4899', icon: '🌸' },
+  { color: '#84cc16', icon: '🌿' },
+];
+
+const OUTLIER_STYLE = { color: '#6b7280', icon: '🔍' };
+
+function getClusterStyle(cluster) {
+  if (cluster === -1) return OUTLIER_STYLE;
+  return CLUSTER_PALETTE[cluster % CLUSTER_PALETTE.length];
+}
 
 function Segmentation() {
-  const [loading, setLoading]           = useState(false);
-  const [result, setResult]             = useState(null);
-  const [error, setError]               = useState(null);
+  const [loading, setLoading]                   = useState(false);
+  const [result, setResult]                     = useState(null);
+  const [error, setError]                       = useState(null);
   const [clusterEmployees, setClusterEmployees] = useState(null);
   const [loadingCluster, setLoadingCluster]     = useState(false);
   const [selectedCluster, setSelectedCluster]   = useState(null);
+  const [availableClusters, setAvailableClusters] = useState([]);
 
   const [formData, setFormData] = useState({
     Age: 35, MonthlyIncome: 5000, YearsAtCompany: 5, YearsInCurrentRole: 3,
     YearsSinceLastPromotion: 1, YearsWithCurrManager: 3, TotalWorkingYears: 10,
     JobSatisfaction: 4, WorkLifeBalance: 3, EnvironmentSatisfaction: 3
   });
+
+  // Charger la liste des clusters disponibles au montage
+  useEffect(() => {
+    api.get('/api/database/cluster-employees?cluster=0')
+      .then(res => {
+        if (res.data.available_clusters) {
+          setAvailableClusters(res.data.available_clusters);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -51,16 +71,30 @@ function Segmentation() {
     try {
       const res = await api.get(`/api/database/cluster-employees?cluster=${cluster}`);
       setClusterEmployees(res.data);
+      // Mettre à jour la liste des clusters si disponible
+      if (res.data.available_clusters && res.data.available_clusters.length > 0) {
+        setAvailableClusters(res.data.available_clusters);
+      }
     } catch (err) {
       setError(parseApiError(err));
     } finally { setLoadingCluster(false); }
   };
 
+  // Clusters à afficher dans la grille (depuis l'API ou fallback)
+  const clustersToShow = availableClusters.length > 0
+    ? availableClusters
+    : [
+        { cluster: 0, count: null, label: 'Employés juniors en développement' },
+        { cluster: 1, count: null, label: 'Employés expérimentés et satisfaits' },
+        { cluster: 2, count: null, label: 'Employés à risque de départ' },
+        { cluster: 3, count: null, label: 'Cadres seniors et stables' },
+      ];
+
   return (
     <div className="container">
       <div className="page-header">
         <h2>🎯 Segmentation des Employés</h2>
-        <p>Classez les employés en groupes homogènes avec K-Means</p>
+        <p>Détectez la vraie structure des profils employés avec DBSCAN + PCA (Silhouette = 0.54)</p>
       </div>
 
       {/* Formulaire */}
@@ -95,100 +129,142 @@ function Segmentation() {
 
       {error && <div className="alert alert-error">❌ {error}</div>}
 
-      {result && (
-        <div className="result-card">
-          <div className="result-header">
-            <h3>Résultat de la segmentation</h3>
-            <span className="badge" style={{ background: CLUSTER_INFO[result.cluster].color + '20', color: CLUSTER_INFO[result.cluster].color, fontSize: '16px', padding: '8px 16px' }}>
-              {CLUSTER_INFO[result.cluster].icon} Cluster {result.cluster}
-            </span>
-          </div>
-          <div className="card" style={{ background: `linear-gradient(135deg, ${CLUSTER_INFO[result.cluster].color}15, ${CLUSTER_INFO[result.cluster].color}05)`, border: `2px solid ${CLUSTER_INFO[result.cluster].color}40`, marginTop: '20px' }}>
-            <h4 style={{ color: CLUSTER_INFO[result.cluster].color, marginBottom: '12px', fontSize: '20px' }}>
-              {CLUSTER_INFO[result.cluster].icon} {CLUSTER_INFO[result.cluster].title}
-            </h4>
-            <p style={{ color: '#374151', marginBottom: '16px' }}>{result.description}</p>
-            <h5 style={{ color: '#111827', marginBottom: '12px' }}>Caractéristiques du segment :</h5>
-            <ul style={{ color: '#374151', lineHeight: '1.8' }}>
-              {CLUSTER_INFO[result.cluster].characteristics.map((c, i) => <li key={i}>{c}</li>)}
-            </ul>
-          </div>
-          <div className="alert alert-success" style={{ marginTop: '20px' }}>
-            <strong>✅ {result.message}</strong>
-          </div>
-        </div>
-      )}
-
-      {/* Les 4 segments avec bouton pour voir les employés */}
-      <div className="card" style={{ marginTop: '40px' }}>
-        <h3 style={{ marginBottom: '16px', color: '#111827' }}>📊 Les 4 segments — Cliquez pour voir les employés</h3>
-        <div className="grid grid-2">
-          {[0, 1, 2, 3].map(cluster => (
-            <div key={cluster}>
-              <div
-                className="card"
-                onClick={() => fetchClusterEmployees(cluster)}
-                style={{
-                  background: `linear-gradient(135deg, ${CLUSTER_INFO[cluster].color}15, ${CLUSTER_INFO[cluster].color}05)`,
-                  border: `2px solid ${selectedCluster === cluster ? CLUSTER_INFO[cluster].color : CLUSTER_INFO[cluster].color + '40'}`,
-                  cursor: 'pointer', transition: 'all 0.2s',
-                  transform: selectedCluster === cluster ? 'scale(1.02)' : 'scale(1)'
-                }}
-              >
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>{CLUSTER_INFO[cluster].icon}</div>
-                <h4 style={{ color: CLUSTER_INFO[cluster].color, marginBottom: '8px' }}>Cluster {cluster}</h4>
-                <p style={{ fontSize: '14px', color: '#374151', marginBottom: '8px' }}>{CLUSTER_INFO[cluster].title}</p>
-                <span style={{ fontSize: '12px', color: CLUSTER_INFO[cluster].color, fontWeight: 600 }}>
-                  {selectedCluster === cluster && clusterEmployees ? `▲ Masquer (${clusterEmployees.total} employés)` : '▼ Voir les employés'}
-                </span>
-              </div>
-
-              {/* Table des employés du cluster */}
-              {selectedCluster === cluster && clusterEmployees && (
-                <div style={{ marginTop: '8px', overflowX: 'auto', border: `1px solid ${CLUSTER_INFO[cluster].color}40`, borderRadius: '8px' }}>
-                  {loadingCluster ? (
-                    <div style={{ padding: '20px', textAlign: 'center' }}>⏳ Chargement...</div>
-                  ) : (
-                    <>
-                      <div style={{ padding: '12px 16px', background: CLUSTER_INFO[cluster].color + '15', fontWeight: 700, color: CLUSTER_INFO[cluster].color }}>
-                        {CLUSTER_INFO[cluster].icon} {clusterEmployees.total} employés dans ce cluster
-                      </div>
-                      <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                          <thead style={{ position: 'sticky', top: 0, background: '#f9fafb' }}>
-                            <tr>
-                              {['ID', 'Âge', 'Genre', 'Département', 'Rôle', 'Salaire', 'Ancienneté', 'Satisfaction', 'Attrition'].map(h => (
-                                <th key={h} style={{ padding: '8px', textAlign: 'left', color: '#374151', fontWeight: 700, borderBottom: '1px solid #e5e7eb' }}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {clusterEmployees.employees.map((emp, i) => (
-                              <tr key={emp.EmployeeNumber} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
-                                <td style={{ padding: '7px 8px' }}>{emp.EmployeeNumber}</td>
-                                <td style={{ padding: '7px 8px' }}>{emp.Age}</td>
-                                <td style={{ padding: '7px 8px' }}>{emp.Gender}</td>
-                                <td style={{ padding: '7px 8px' }}>{emp.Department}</td>
-                                <td style={{ padding: '7px 8px' }}>{emp.JobRole}</td>
-                                <td style={{ padding: '7px 8px' }}>${emp.MonthlyIncome?.toLocaleString()}</td>
-                                <td style={{ padding: '7px 8px' }}>{emp.YearsAtCompany} ans</td>
-                                <td style={{ padding: '7px 8px' }}>{emp.JobSatisfaction}/4</td>
-                                <td style={{ padding: '7px 8px' }}>
-                                  <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 700, background: emp.Attrition === 'Yes' ? '#fee2e2' : '#d1fae5', color: emp.Attrition === 'Yes' ? '#dc2626' : '#065f46' }}>
-                                    {emp.Attrition}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
+      {result && (() => {
+        const style = getClusterStyle(result.cluster);
+        return (
+          <div className="result-card">
+            <div className="result-header">
+              <h3>Résultat de la segmentation</h3>
+              <span className="badge" style={{
+                background: style.color + '20',
+                color: style.color,
+                fontSize: '16px',
+                padding: '8px 16px'
+              }}>
+                {style.icon} {result.cluster === -1 ? 'Outlier' : `Cluster ${result.cluster}`}
+              </span>
             </div>
-          ))}
+            <div className="card" style={{
+              background: `linear-gradient(135deg, ${style.color}15, ${style.color}05)`,
+              border: `2px solid ${style.color}40`,
+              marginTop: '20px'
+            }}>
+              <h4 style={{ color: style.color, marginBottom: '12px', fontSize: '20px' }}>
+                {style.icon} {result.description}
+              </h4>
+              <p style={{ color: '#374151' }}>{result.message}</p>
+            </div>
+            <div className="alert alert-success" style={{ marginTop: '20px' }}>
+              <strong>✅ {result.message}</strong>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Clusters DBSCAN dynamiques */}
+      <div className="card" style={{ marginTop: '40px' }}>
+        <h3 style={{ marginBottom: '8px', color: '#111827' }}>
+          📊 Clusters DBSCAN — Cliquez pour voir les employés
+        </h3>
+        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
+          DBSCAN détecte automatiquement la structure et identifie les profils atypiques (cluster -1 = outliers).
+          Silhouette Score = <strong>0.54</strong> (vs K-Means = 0.35)
+        </p>
+        <div className="grid grid-2">
+          {clustersToShow.map(({ cluster, count, label }) => {
+            const style = getClusterStyle(cluster);
+            const isSelected = selectedCluster === cluster;
+            return (
+              <div key={cluster}>
+                <div
+                  className="card"
+                  onClick={() => fetchClusterEmployees(cluster)}
+                  style={{
+                    background: `linear-gradient(135deg, ${style.color}15, ${style.color}05)`,
+                    border: `2px solid ${isSelected ? style.color : style.color + '40'}`,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    transform: isSelected ? 'scale(1.02)' : 'scale(1)'
+                  }}
+                >
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>{style.icon}</div>
+                  <h4 style={{ color: style.color, marginBottom: '8px' }}>
+                    {cluster === -1 ? 'Outliers' : `Cluster ${cluster}`}
+                    {count !== null && (
+                      <span style={{ fontSize: '13px', fontWeight: 400, marginLeft: '8px', color: '#6b7280' }}>
+                        ({count} employés)
+                      </span>
+                    )}
+                  </h4>
+                  <p style={{ fontSize: '14px', color: '#374151', marginBottom: '8px' }}>{label}</p>
+                  <span style={{ fontSize: '12px', color: style.color, fontWeight: 600 }}>
+                    {isSelected && clusterEmployees
+                      ? `▲ Masquer (${clusterEmployees.total} employés)`
+                      : '▼ Voir les employés'}
+                  </span>
+                </div>
+
+                {/* Table des employés */}
+                {isSelected && clusterEmployees && (
+                  <div style={{
+                    marginTop: '8px',
+                    overflowX: 'auto',
+                    border: `1px solid ${style.color}40`,
+                    borderRadius: '8px'
+                  }}>
+                    {loadingCluster ? (
+                      <div style={{ padding: '20px', textAlign: 'center' }}>⏳ Chargement...</div>
+                    ) : (
+                      <>
+                        <div style={{
+                          padding: '12px 16px',
+                          background: style.color + '15',
+                          fontWeight: 700,
+                          color: style.color
+                        }}>
+                          {style.icon} {clusterEmployees.total} employés — {clusterEmployees.label}
+                        </div>
+                        <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                            <thead style={{ position: 'sticky', top: 0, background: '#f9fafb' }}>
+                              <tr>
+                                {['ID', 'Âge', 'Genre', 'Département', 'Rôle', 'Salaire', 'Ancienneté', 'Satisfaction', 'Attrition'].map(h => (
+                                  <th key={h} style={{ padding: '8px', textAlign: 'left', color: '#374151', fontWeight: 700, borderBottom: '1px solid #e5e7eb' }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {clusterEmployees.employees.map((emp, i) => (
+                                <tr key={emp.EmployeeNumber} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+                                  <td style={{ padding: '7px 8px' }}>{emp.EmployeeNumber}</td>
+                                  <td style={{ padding: '7px 8px' }}>{emp.Age}</td>
+                                  <td style={{ padding: '7px 8px' }}>{emp.Gender}</td>
+                                  <td style={{ padding: '7px 8px' }}>{emp.Department}</td>
+                                  <td style={{ padding: '7px 8px' }}>{emp.JobRole}</td>
+                                  <td style={{ padding: '7px 8px' }}>${emp.MonthlyIncome?.toLocaleString()}</td>
+                                  <td style={{ padding: '7px 8px' }}>{emp.YearsAtCompany} ans</td>
+                                  <td style={{ padding: '7px 8px' }}>{emp.JobSatisfaction}/4</td>
+                                  <td style={{ padding: '7px 8px' }}>
+                                    <span style={{
+                                      padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 700,
+                                      background: emp.Attrition === 'Yes' ? '#fee2e2' : '#d1fae5',
+                                      color: emp.Attrition === 'Yes' ? '#dc2626' : '#065f46'
+                                    }}>
+                                      {emp.Attrition}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -14,14 +14,14 @@ function Home() {
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
           <h3 style={{ marginBottom: '12px', color: '#111827' }}>Prédiction d'Attrition</h3>
           <p style={{ color: '#6b7280', marginBottom: '20px' }}>
-            Identifiez les employés à risque de quitter l'entreprise avec notre modèle Random Forest optimisé.
+            Identifiez les employés à risque de quitter l'entreprise avec notre modèle XGBoost optimisé.
           </p>
           <Link to="/attrition">
             <button className="btn btn-primary">Essayer maintenant</button>
           </Link>
           <div style={{ marginTop: '16px', fontSize: '14px', color: '#6b7280' }}>
-            <strong>Modèle :</strong> Random Forest + SMOTE<br />
-            <strong>Précision :</strong> ~83%
+            <strong>Modèle :</strong> XGBoost + SMOTE (seuil=0.15)<br />
+            <strong>Recall :</strong> 68% | AUC : 0.731
           </div>
         </div>
 
@@ -29,14 +29,14 @@ function Home() {
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎯</div>
           <h3 style={{ marginBottom: '12px', color: '#111827' }}>Segmentation</h3>
           <p style={{ color: '#6b7280', marginBottom: '20px' }}>
-            Classez vos employés en groupes homogènes pour mieux comprendre votre organisation.
+            Classez vos employés en groupes homogènes et détectez les profils atypiques avec DBSCAN.
           </p>
           <Link to="/segmentation">
             <button className="btn btn-primary">Essayer maintenant</button>
           </Link>
           <div style={{ marginTop: '16px', fontSize: '14px', color: '#6b7280' }}>
-            <strong>Modèle :</strong> K-Means + PCA<br />
-            <strong>Clusters :</strong> 4 segments
+            <strong>Modèle :</strong> DBSCAN + PCA<br />
+            <strong>Silhouette :</strong> 0.54
           </div>
         </div>
 
@@ -93,8 +93,8 @@ function Home() {
           <div className="stat-label">Features utilisées</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">83%</div>
-          <div className="stat-label">Précision moyenne</div>
+          <div className="stat-value">68%</div>
+          <div className="stat-label">Recall DSO1 (XGBoost)</div>
         </div>
       </div>
     </div>

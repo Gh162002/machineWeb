@@ -237,10 +237,11 @@ def predict_attrition(data: AttritionInput):
         feature_names = attrition_model_data['feature_names']
         X = np.array([[input_dict.get(feat, 0) for feat in feature_names]])
         
-        # Prédiction
+        # Prédiction avec seuil 0.15 (maximise le Recall — détecter max de départs)
         model = attrition_model_data['model']
-        probability = model.predict_proba(X)[0][1]  # Probabilité de la classe 1 (Attrition)
-        prediction = int(probability > 0.5)
+        threshold = attrition_model_data.get('threshold', 0.15)
+        probability = model.predict_proba(X)[0][1]
+        prediction = int(probability >= threshold)
         
         # Interprétation
         risk_level = "Élevé" if probability > 0.7 else "Moyen" if probability > 0.4 else "Faible"
@@ -258,41 +259,39 @@ def predict_attrition(data: AttritionInput):
 @app.post("/api/predict/segmentation")
 def predict_segmentation(data: SegmentationInput):
     """
-    Segmenter un employé dans un cluster
-    Retourne le numéro du cluster et ses caractéristiques
+    DSO2 — DBSCAN via NearestNeighbors sur les core points.
+    Pour un nouveau point, on trouve le core point le plus proche
+    et on lui affecte son cluster DBSCAN.
     """
     try:
-        # Convertir en array
         input_dict = data.model_dump()
         feature_names = segmentation_model_data['feature_names']
         X = np.array([[input_dict[feat] for feat in feature_names]])
-        
-        # Normalisation
-        scaler = segmentation_model_data['scaler']
-        X_scaled = scaler.transform(X)
-        
-        # PCA
-        pca = segmentation_model_data['pca']
-        X_pca = pca.transform(X_scaled)
-        
-        # Prédiction du cluster
-        kmeans = segmentation_model_data['kmeans']
-        cluster = int(kmeans.predict(X_pca)[0])
-        
-        # Descriptions des clusters
-        cluster_descriptions = {
-            0: "Employés juniors en développement",
-            1: "Employés expérimentés et satisfaits",
-            2: "Employés à risque de départ",
-            3: "Cadres seniors et stables"
-        }
-        
+
+        X_scaled = segmentation_model_data['scaler'].transform(X)
+        X_pca    = segmentation_model_data['pca'].transform(X_scaled)
+
+        nn_model    = segmentation_model_data['nn_model']
+        core_labels = segmentation_model_data['core_labels']
+
+        distances, indices = nn_model.kneighbors(X_pca)
+        nearest_dist  = float(distances[0][0])
+        nearest_label = int(core_labels[indices[0][0]])
+
+        # Si trop loin des core points → outlier
+        eps = segmentation_model_data['dbscan'].eps
+        cluster = nearest_label if nearest_dist <= eps * 1.5 else -1
+
+        cluster_descriptions = segmentation_model_data.get('cluster_descriptions', {})
+        description = cluster_descriptions.get(cluster, f"Cluster {cluster}")
+
         return {
             "cluster": cluster,
-            "description": cluster_descriptions.get(cluster, "Cluster inconnu"),
-            "message": f"L'employé appartient au cluster {cluster}"
+            "description": description,
+            "message": f"L'employé appartient au cluster {cluster} — {description}" if cluster != -1
+                       else "Profil atypique détecté par DBSCAN (outlier)"
         }
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur de segmentation : {str(e)}")
 
@@ -441,47 +440,54 @@ def get_top_attrition(top_n: int = Query(10, ge=1, le=50)):
 
 
 @app.get("/api/database/cluster-employees")
-def get_cluster_employees(cluster: int = Query(..., ge=0, le=3)):
+def get_cluster_employees(cluster: int = Query(..., ge=-1, le=20)):
     """
-    DSO2 — Liste des employés affectés à un cluster donné (0, 1, 2 ou 3).
+    DSO2 — Liste des employés d'un cluster DBSCAN.
+    Utilise les labels pré-calculés sur tout le dataset.
     """
     _check_dataset()
     try:
         df = df_global.copy()
-        feature_names = segmentation_model_data["feature_names"]
-        X = df[feature_names].fillna(0).values
 
-        scaler = segmentation_model_data["scaler"]
-        pca    = segmentation_model_data["pca"]
-        kmeans = segmentation_model_data["kmeans"]
+        # Labels DBSCAN pré-calculés sur tout le dataset
+        all_labels = segmentation_model_data.get('all_labels', [])
+        if len(all_labels) != len(df):
+            raise HTTPException(status_code=500, detail="Labels DBSCAN non disponibles, relancez train_models.py")
 
-        X_scaled = scaler.transform(X)
-        X_pca    = pca.transform(X_scaled)
-        clusters = kmeans.predict(X_pca)
-
-        df["cluster"] = clusters
+        df["cluster"] = all_labels
         cluster_df = df[df["cluster"] == cluster]
 
-        cluster_labels = {
-            0: "Employés juniors en développement",
-            1: "Employés expérimentés et satisfaits",
-            2: "Employés à risque de départ",
-            3: "Cadres seniors et stables"
+        cluster_descriptions = segmentation_model_data.get('cluster_descriptions', {})
+        default_desc = {
+            -1: "Profils atypiques (outliers)",
+            0: "Cluster 0", 1: "Cluster 1", 2: "Cluster 2", 3: "Cluster 3"
         }
+        label = cluster_descriptions.get(cluster) or default_desc.get(cluster, f"Cluster {cluster}")
 
         columns = ["EmployeeNumber", "Age", "Gender", "Department", "JobRole",
                    "MonthlyIncome", "YearsAtCompany", "JobSatisfaction",
                    "WorkLifeBalance", "EnvironmentSatisfaction", "Attrition"]
-
         records = cluster_df[columns].fillna("").to_dict(orient="records")
+
+        # Résumé de tous les clusters
+        from collections import Counter
+        counts = Counter(all_labels)
+        available_clusters = [
+            {"cluster": int(c), "count": int(n),
+             "label": cluster_descriptions.get(c) or default_desc.get(c, f"Cluster {c}")}
+            for c, n in sorted(counts.items())
+        ]
 
         return {
             "cluster": cluster,
-            "label": cluster_labels.get(cluster, "Inconnu"),
+            "label": label,
             "total": len(records),
-            "employees": records
+            "employees": records,
+            "available_clusters": available_clusters
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 

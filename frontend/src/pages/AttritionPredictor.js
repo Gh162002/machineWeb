@@ -60,7 +60,7 @@ function AttritionPredictor() {
     <div className="container">
       <div className="page-header">
         <h2>📊 Prédiction d'Attrition</h2>
-        <p>Identifiez les employés à risque de quitter l'entreprise</p>
+        <p>Identifiez les employés à risque de quitter l'entreprise — XGBoost + SMOTE (Recall=68%, AUC=0.731)</p>
       </div>
 
       {/* Bouton Top 10 */}

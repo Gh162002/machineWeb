@@ -33,8 +33,9 @@
       "YearsSinceLastPromotion",
       "YearsWithCurrManager"
     ],
-    "model_type": "RandomForestClassifier",
-    "description": "Pr\u00e9diction du risque d'attrition des employ\u00e9s"
+    "model_type": "XGBClassifier",
+    "threshold": 0.15,
+    "description": "XGBoost + SMOTE — Recall=0.68, AUC=0.731, seuil=0.15"
   },
   "segmentation": {
     "features": [
@@ -49,9 +50,10 @@
       "WorkLifeBalance",
       "EnvironmentSatisfaction"
     ],
-    "n_clusters": 4,
-    "model_type": "KMeans",
-    "description": "Segmentation des employ\u00e9s en groupes homog\u00e8nes"
+    "model_type": "DBSCAN",
+    "n_clusters": 5,
+    "silhouette": 0.539,
+    "description": "DBSCAN (eps=1.2, min_samples=5) — 5 clusters, Silhouette=0.539"
   },
   "recommendation": {
     "features": [
@@ -64,6 +66,6 @@
       "TrainingTimesLastYear"
     ],
     "model_type": "LinearRegression",
-    "description": "Recommandation bas\u00e9e sur la pr\u00e9diction de performance"
+    "description": "Régression Linéaire — R²=0.894"
   }
 }
