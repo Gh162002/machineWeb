@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { parseApiError } from '../utils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faObjectGroup, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 
 // Palette de couleurs et icônes pour les clusters dynamiques DBSCAN
 const CLUSTER_PALETTE = [
@@ -14,7 +16,7 @@ const CLUSTER_PALETTE = [
   { color: '#84cc16', icon: '🌿' },
 ];
 
-const OUTLIER_STYLE = { color: '#6b7280', icon: '🔍' };
+const OUTLIER_STYLE = { color: 'var(--color-muted)', icon: '🔍' };
 
 function getClusterStyle(cluster) {
   if (cluster === -1) return OUTLIER_STYLE;
@@ -93,13 +95,16 @@ function Segmentation() {
   return (
     <div className="container">
       <div className="page-header">
-        <h2>🎯 Segmentation des Employés</h2>
+        <h2>
+          <FontAwesomeIcon icon={faObjectGroup} style={{ marginRight: '10px' }} aria-hidden="true" />
+          Segmentation des Employés
+        </h2>
         <p>Détectez la vraie structure des profils employés avec DBSCAN + PCA (Silhouette = 0.54)</p>
       </div>
 
       {/* Formulaire */}
       <div className="card">
-        <h3 style={{ marginBottom: '24px', color: '#111827' }}>Profil de l'employé</h3>
+        <h3 style={{ marginBottom: '24px', color: 'var(--color-heading)' }}>Profil de l'employé</h3>
         <form onSubmit={handleSubmit}>
           <div className="grid grid-2">
             {[
@@ -152,7 +157,7 @@ function Segmentation() {
               <h4 style={{ color: style.color, marginBottom: '12px', fontSize: '20px' }}>
                 {style.icon} {result.description}
               </h4>
-              <p style={{ color: '#374151' }}>{result.message}</p>
+              <p style={{ color: 'var(--color-text)' }}>{result.message}</p>
             </div>
             <div className="alert alert-success" style={{ marginTop: '20px' }}>
               <strong>✅ {result.message}</strong>
@@ -163,10 +168,10 @@ function Segmentation() {
 
       {/* Clusters DBSCAN dynamiques */}
       <div className="card" style={{ marginTop: '40px' }}>
-        <h3 style={{ marginBottom: '8px', color: '#111827' }}>
+        <h3 style={{ marginBottom: '8px', color: 'var(--color-heading)' }}>
           📊 Clusters DBSCAN — Cliquez pour voir les employés
         </h3>
-        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
+        <p style={{ color: 'var(--color-muted)', fontSize: '14px', marginBottom: '20px' }}>
           DBSCAN détecte automatiquement la structure et identifie les profils atypiques (cluster -1 = outliers).
           Silhouette Score = <strong>0.54</strong> (vs K-Means = 0.35)
         </p>
@@ -191,16 +196,17 @@ function Segmentation() {
                   <h4 style={{ color: style.color, marginBottom: '8px' }}>
                     {cluster === -1 ? 'Outliers' : `Cluster ${cluster}`}
                     {count !== null && (
-                      <span style={{ fontSize: '13px', fontWeight: 400, marginLeft: '8px', color: '#6b7280' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 400, marginLeft: '8px', color: 'var(--color-muted)' }}>
                         ({count} employés)
                       </span>
                     )}
                   </h4>
-                  <p style={{ fontSize: '14px', color: '#374151', marginBottom: '8px' }}>{label}</p>
+                  <p style={{ fontSize: '14px', color: 'var(--color-text)', marginBottom: '8px' }}>{label}</p>
                   <span style={{ fontSize: '12px', color: style.color, fontWeight: 600 }}>
+                    <FontAwesomeIcon icon={isSelected && clusterEmployees ? faChevronUp : faChevronDown} aria-hidden="true" style={{ marginRight: '4px' }} />
                     {isSelected && clusterEmployees
-                      ? `▲ Masquer (${clusterEmployees.total} employés)`
-                      : '▼ Voir les employés'}
+                      ? `Masquer (${clusterEmployees.total} employés)`
+                      : 'Voir les employés'}
                   </span>
                 </div>
 
@@ -226,16 +232,16 @@ function Segmentation() {
                         </div>
                         <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                            <thead style={{ position: 'sticky', top: 0, background: '#f9fafb' }}>
+                            <thead style={{ position: 'sticky', top: 0, background: 'var(--color-bg-tertiary)' }}>
                               <tr>
                                 {['ID', 'Âge', 'Genre', 'Département', 'Rôle', 'Salaire', 'Ancienneté', 'Satisfaction', 'Attrition'].map(h => (
-                                  <th key={h} style={{ padding: '8px', textAlign: 'left', color: '#374151', fontWeight: 700, borderBottom: '1px solid #e5e7eb' }}>{h}</th>
+                                  <th key={h} style={{ padding: '8px', textAlign: 'left', color: 'var(--color-text)', fontWeight: 700, borderBottom: '1px solid var(--color-border)' }}>{h}</th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
                               {clusterEmployees.employees.map((emp, i) => (
-                                <tr key={emp.EmployeeNumber} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+                                <tr key={emp.EmployeeNumber} style={{ background: i % 2 === 0 ? 'var(--color-bg-secondary)' : 'var(--color-bg-tertiary)', borderBottom: '1px solid var(--color-border)' }}>
                                   <td style={{ padding: '7px 8px' }}>{emp.EmployeeNumber}</td>
                                   <td style={{ padding: '7px 8px' }}>{emp.Age}</td>
                                   <td style={{ padding: '7px 8px' }}>{emp.Gender}</td>

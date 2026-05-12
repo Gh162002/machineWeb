@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { parseApiError } from '../utils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faAward, faTrophy, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 
 function Recommendation() {
   const [loading, setLoading]         = useState(false);
@@ -72,18 +74,24 @@ function Recommendation() {
   return (
     <div className="container">
       <div className="page-header">
-        <h2>⭐ Recommandation Intelligente</h2>
+        <h2>
+          <FontAwesomeIcon icon={faAward} style={{ marginRight: '10px' }} aria-hidden="true" />
+          Recommandation Intelligente
+        </h2>
         <p>Évaluez le potentiel d'un employé avec notre système de scoring</p>
       </div>
 
       {/* Section Top 5 */}
       <div className="card" style={{ marginBottom: '24px' }}>
-        <h3 style={{ marginBottom: '16px', color: '#111827' }}>🏆 Top 5 Employés Recommandés</h3>
+        <h3 style={{ marginBottom: '16px', color: 'var(--color-heading)' }}>
+          <FontAwesomeIcon icon={faTrophy} style={{ marginRight: '8px', color: '#F5A623' }} aria-hidden="true" />
+          Top 5 Employés Recommandés
+        </h3>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <select
             value={selectedRole}
             onChange={e => setSelectedRole(e.target.value)}
-            style={{ padding: '10px 12px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', minWidth: '220px' }}
+            style={{ padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '14px', minWidth: '220px' }}
           >
             <option value="">— Tous les rôles —</option>
             {availableRoles.map(r => <option key={r} value={r}>{r}</option>)}
@@ -110,7 +118,7 @@ function Recommendation() {
               </thead>
               <tbody>
                 {topEmployees.map((emp, i) => (
-                  <tr key={emp.EmployeeNumber} style={{ background: i % 2 === 0 ? '#fff' : '#f0fdf4', borderBottom: '1px solid #d1fae5' }}>
+                  <tr key={emp.EmployeeNumber} style={{ background: i % 2 === 0 ? 'var(--color-bg-secondary)' : '#f0fdf4', borderBottom: '1px solid #d1fae5' }}>
                     <td style={{ padding: '8px', fontWeight: 700, color: '#10b981' }}>{i + 1}</td>
                     <td style={{ padding: '8px' }}>{emp.EmployeeNumber}</td>
                     <td style={{ padding: '8px' }}>{emp.Age}</td>
@@ -144,13 +152,13 @@ function Recommendation() {
 
       {/* Formulaire individuel */}
       <div className="card">
-        <h3 style={{ marginBottom: '24px', color: '#111827' }}>Profil de l'employé</h3>
+        <h3 style={{ marginBottom: '24px', color: 'var(--color-heading)' }}>Profil de l'employé</h3>
         <form onSubmit={handleSubmit}>
           <div className="grid grid-2">
             <div className="form-group">
               <label>Âge</label>
               <input type="number" name="Age" value={formData.Age} onChange={handleChange} min="18" max="65" required />
-              <small style={{ color: '#6b7280', fontSize: '12px' }}>Entre 18 et 65 ans</small>
+              <small style={{ color: 'var(--color-muted)', fontSize: '12px' }}>Entre 18 et 65 ans</small>
             </div>
             <div className="form-group">
               <label>Niveau du poste</label>
@@ -213,7 +221,7 @@ function Recommendation() {
             <div className="card" style={{ background: `linear-gradient(135deg, ${getLevelColor(result.level)}15, ${getLevelColor(result.level)}05)`, border: `2px solid ${getLevelColor(result.level)}40`, textAlign: 'center', padding: '32px' }}>
               <div style={{ fontSize: '64px', marginBottom: '16px' }}>{getLevelIcon(result.level)}</div>
               <div style={{ fontSize: '48px', fontWeight: '700', color: getLevelColor(result.level), marginBottom: '8px' }}>{result.score.toFixed(1)}/100</div>
-              <div style={{ fontSize: '18px', color: '#374151' }}>Niveau : <strong>{result.level}</strong></div>
+              <div style={{ fontSize: '18px', color: 'var(--color-text)' }}>Niveau : <strong>{result.level}</strong></div>
             </div>
             <div>
               <span className="result-label">Progression du score</span>
@@ -240,13 +248,13 @@ function Recommendation() {
 
       {/* Échelle */}
       <div className="card" style={{ marginTop: '40px' }}>
-        <h3 style={{ marginBottom: '16px', color: '#111827' }}>📊 Échelle de notation</h3>
+        <h3 style={{ marginBottom: '16px', color: 'var(--color-heading)' }}>📊 Échelle de notation</h3>
         <div className="grid grid-2">
           {[['Excellent', '80-100', '🌟', '#10b981'], ['Bon', '60-79', '👍', '#3b82f6'], ['Moyen', '40-59', '👌', '#f59e0b'], ['Faible', '0-39', '⚠️', '#ef4444']].map(([lvl, range, icon, color]) => (
             <div key={lvl} className="card" style={{ background: `linear-gradient(135deg, ${color}15, ${color}05)`, border: `2px solid ${color}40` }}>
               <div style={{ fontSize: '32px', marginBottom: '8px' }}>{icon}</div>
               <h4 style={{ color, marginBottom: '8px' }}>{lvl} ({range})</h4>
-              <p style={{ fontSize: '14px', color: '#374151' }}>Employé {lvl === 'Excellent' ? 'hautement recommandé' : lvl === 'Bon' ? 'recommandé' : lvl === 'Moyen' ? 'avec potentiel' : 'à développer'}</p>
+              <p style={{ fontSize: '14px', color: 'var(--color-text)' }}>Employé {lvl === 'Excellent' ? 'hautement recommandé' : lvl === 'Bon' ? 'recommandé' : lvl === 'Moyen' ? 'avec potentiel' : 'à développer'}</p>
             </div>
           ))}
         </div>

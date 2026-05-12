@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import api from '../api';
 import { parseApiError } from '../utils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faChartBar, faFire, faTriangleExclamation, faArrowTrendUp } from '@fortawesome/free-solid-svg-icons';
 
 function AttritionPredictor() {
   const [loading, setLoading] = useState(false);
@@ -59,7 +61,10 @@ function AttritionPredictor() {
   return (
     <div className="container">
       <div className="page-header">
-        <h2>📊 Prédiction d'Attrition</h2>
+        <h2>
+          <FontAwesomeIcon icon={faChartBar} style={{ marginRight: '10px' }} aria-hidden="true" />
+          Prédiction d'Attrition
+        </h2>
         <p>Identifiez les employés à risque de quitter l'entreprise — XGBoost + SMOTE (Recall=68%, AUC=0.731)</p>
       </div>
 
@@ -69,9 +74,10 @@ function AttritionPredictor() {
           className="btn btn-secondary"
           onClick={showTop ? () => setShowTop(false) : fetchTopAttrition}
           disabled={loadingTop}
-          style={{ background: '#fef3c7', color: '#92400e', border: '2px solid #fcd34d', fontWeight: 700 }}
+          style={{ background: '#FFF0F3', color: '#C0243C', border: '1.5px solid #FFBDCA', fontWeight: 700 }}
         >
-          {loadingTop ? '⏳ Chargement...' : showTop ? '🙈 Masquer le Top 10' : '🔥 Voir Top 10 employés à risque élevé'}
+          <FontAwesomeIcon icon={loadingTop ? faArrowTrendUp : faFire} aria-hidden="true" />
+          {loadingTop ? 'Chargement...' : showTop ? 'Masquer le Top 10' : 'Top 10 employés à risque élevé'}
         </button>
       </div>
 
@@ -89,7 +95,7 @@ function AttritionPredictor() {
             </thead>
             <tbody>
               {topAttrition.map((emp, i) => (
-                <tr key={emp.EmployeeNumber} style={{ background: i % 2 === 0 ? '#fff' : '#fef2f2', borderBottom: '1px solid #fee2e2' }}>
+                <tr key={emp.EmployeeNumber} style={{ background: i % 2 === 0 ? 'var(--color-bg-secondary)' : '#fef2f2', borderBottom: '1px solid #fee2e2' }}>
                   <td style={{ padding: '8px', fontWeight: 700, color: '#dc2626' }}>{i + 1}</td>
                   <td style={{ padding: '8px' }}>{emp.EmployeeNumber}</td>
                   <td style={{ padding: '8px' }}>{emp.Age}</td>
@@ -122,7 +128,7 @@ function AttritionPredictor() {
 
       {/* Formulaire */}
       <div className="card">
-        <h3 style={{ marginBottom: '24px', color: '#111827' }}>Informations de l'employé</h3>
+        <h3 style={{ marginBottom: '24px', color: 'var(--color-heading)' }}>Informations de l'employé</h3>
         <form onSubmit={handleSubmit}>
           <div className="grid grid-3">
             <div className="form-group"><label>Âge</label><input type="number" name="Age" value={formData.Age} onChange={handleChange} required /></div>
