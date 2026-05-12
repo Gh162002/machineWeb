@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { parseApiError } from '../utils';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faAward, faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { faAward } from '@fortawesome/free-solid-svg-icons';
 
 function Recommendation() {
   const [loading, setLoading]         = useState(false);
